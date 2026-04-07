@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>FactuLogin</title>
+    <link rel="stylesheet" href="/CSS/styles.css">
+</head>
+<body>
+    <div class="auth-wrapper">
+        <div class="auth-card">
+            <div class="auth-header">
+                <button class="tab active" id="tab-login">Iniciar sesión</button>
+                <button class="tab" id="tab-register">Registrarse</button>
+            </div>
+
+            <div class="auth-body">
+                <!-- Panel Iniciar Sesión -->
+                <form class="form form-active" id="form-login">
+                    <h2>Bienvenido</h2>
+
+                    <div class="input-group">
+                        <label for="login-correo">Correo</label>
+                        <input type="email" name="correo" id="login-correo" required>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="login-password">Contraseña</label>
+                        <input type="password" name="password" id="login-password" required>
+                    </div>
+
+                    <button type="submit" class="btn-primary">Ingresar</button>
+
+                    <p class="switch-text">
+                        ¿No tienes cuenta?
+                        <button type="button" class="link-button" id="go-register">Regístrate</button>
+                    </p>
+                </form>
+
+                <!-- Panel Registrarse -->
+                <form class="form" id="form-register">
+                    <h2>Crea tu cuenta</h2>
+
+                    <div class="input-group">
+                        <label for="reg-nombre">Nombre</label>
+                        <input type="text" name="nombre" id="reg-nombre" required>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="reg-correo">Correo</label>
+                        <input type="email" name="correo" id="reg-correo" required>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="reg-password">Contraseña</label>
+                        <input type="password" name="password" id="reg-password" required>
+                    </div>
+
+                    <div class="input-group">
+                        <label for="reg-confirmar">Confirmar contraseña</label>
+                        <input type="password" name="confirmarPassword" id="reg-confirmar" required>
+                    </div>
+
+                    <button type="submit" class="btn-primary">Registrarse</button>
+
+                    <p class="switch-text">
+                        ¿Ya tienes cuenta?
+                        <button type="button" class="link-button" id="go-login">Inicia sesión</button>
+                    </p>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const tabLogin = document.getElementById('tab-login');
+        const tabRegister = document.getElementById('tab-register');
+        const formLogin = document.getElementById('form-login');
+        const formRegister = document.getElementById('form-register');
+        const goRegister = document.getElementById('go-register');
+        const goLogin = document.getElementById('go-login');
+
+        function showLogin() {
+            tabLogin.classList.add('active');
+            tabRegister.classList.remove('active');
+            formLogin.classList.add('form-active');
+            formRegister.classList.remove('form-active');
+        }
+
+        function showRegister() {
+            tabRegister.classList.add('active');
+            tabLogin.classList.remove('active');
+            formRegister.classList.add('form-active');
+            formLogin.classList.remove('form-active');
+        }
+
+        tabLogin.addEventListener('click', showLogin);
+        tabRegister.addEventListener('click', showRegister);
+        goRegister.addEventListener('click', showRegister);
+        goLogin.addEventListener('click', showLogin);
+    </script>
+</body>
+</html>
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Registro</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <div class="container">
+        <form class="form">
+            <h2>Crear Cuenta</h2>
+
+            <div class="input-group">
+                <label>Nombre</label>
+                <input type="text" name="nombre" id="nombre" required>
+            </div>
+
+            <div class="input-group">
+                <label>Correo</label>
+                <input type="email" name="correo" id="correo" required>
+            </div>
+
+            <div class="input-group">
+                <label>Contraseña</label>
+                <input type="password" name="password" id="password" required>
+            </div>
+
+            <div class="input-group">
+                <label>Confirmar Contraseña</label>
+                <input type="password" name="confirmarPassword" id="confirmarPassword" required>
+            </div>
+
+            <button type="submit">Registrarse</button>
+
+            <p class="link">
+                ¿Ya tienes cuenta? <a href="login.html">Inicia sesión</a>
+            </p>
+        </form>
+    </div>
+
+</body>
+</html>
