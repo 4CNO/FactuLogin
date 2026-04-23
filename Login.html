@@ -3,7 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <title>FactuLogin</title>
-    <link rel="stylesheet" href="/CSS/styles.css">
+    <link rel="stylesheet" href="CSS/styles.css">
+    <style>
+        .error-message {
+            background-color: #fee;
+            border: 1px solid #fcc;
+            color: #c33;
+            padding: 0.7rem 0.9rem;
+            border-radius: 0.7rem;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            animation: slideDown 0.3s ease;
+        }
+
+        .success-message {
+            background-color: #efe;
+            border: 1px solid #cfc;
+            color: #3c3;
+            padding: 0.7rem 0.9rem;
+            border-radius: 0.7rem;
+            margin-bottom: 1rem;
+            font-size: 0.9rem;
+            animation: slideDown 0.3s ease;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        button[type="submit"]:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+    </style>
 </head>
 <body>
     <div class="auth-wrapper">
@@ -27,6 +66,8 @@
                         <label for="login-password">Contraseña</label>
                         <input type="password" name="password" id="login-password" required>
                     </div>
+
+                    <div id="login-error" class="error-message" style="display: none;"></div>
 
                     <button type="submit" class="btn-primary">Ingresar</button>
 
@@ -60,6 +101,9 @@
                         <input type="password" name="confirmarPassword" id="reg-confirmar" required>
                     </div>
 
+                    <div id="register-error" class="error-message" style="display: none;"></div>
+                    <div id="register-success" class="success-message" style="display: none;"></div>
+
                     <button type="submit" class="btn-primary">Registrarse</button>
 
                     <p class="switch-text">
@@ -72,82 +116,293 @@
     </div>
 
     <script>
+        // ========================================
+        // CONFIGURACIÓN GENERAL
+        // ========================================
+        const API_URL = 'http://localhost:3000';
+        const REDIRECT_URL = 'menú.html';
+
+        // ========================================
+        // REFERENCIAS AL DOM
+        // ========================================
         const tabLogin = document.getElementById('tab-login');
         const tabRegister = document.getElementById('tab-register');
         const formLogin = document.getElementById('form-login');
         const formRegister = document.getElementById('form-register');
         const goRegister = document.getElementById('go-register');
         const goLogin = document.getElementById('go-login');
-        const API_URL = 'http://localhost:3000';
 
+        // Inputs Login
+        const loginCorreoInput = document.getElementById('login-correo');
+        const loginPasswordInput = document.getElementById('login-password');
+        const loginErrorDiv = document.getElementById('login-error');
+
+        // Inputs Registro
+        const regNombreInput = document.getElementById('reg-nombre');
+        const regCorreoInput = document.getElementById('reg-correo');
+        const regPasswordInput = document.getElementById('reg-password');
+        const regConfirmarInput = document.getElementById('reg-confirmar');
+        const registerErrorDiv = document.getElementById('register-error');
+        const registerSuccessDiv = document.getElementById('register-success');
+
+        // ========================================
+        // FUNCIONES AUXILIARES
+        // ========================================
+
+        /**
+         * Mostrar mensaje de error
+         */
+        function showError(element, message) {
+            element.textContent = message;
+            element.style.display = 'block';
+        }
+
+        /**
+         * Ocultar mensaje de error
+         */
+        function hideError(element) {
+            element.textContent = '';
+            element.style.display = 'none';
+        }
+
+        /**
+         * Mostrar mensaje de éxito
+         */
+        function showSuccess(element, message) {
+            element.textContent = message;
+            element.style.display = 'block';
+        }
+
+        /**
+         * Ocultar mensaje de éxito
+         */
+        function hideSuccess(element) {
+            element.textContent = '';
+            element.style.display = 'none';
+        }
+
+        /**
+         * Cambiar a panel de Login
+         */
         function showLogin() {
             tabLogin.classList.add('active');
             tabRegister.classList.remove('active');
             formLogin.classList.add('form-active');
             formRegister.classList.remove('form-active');
+            hideError(loginErrorDiv);
+            hideSuccess(registerSuccessDiv);
+            loginCorreoInput.focus();
         }
 
+        /**
+         * Cambiar a panel de Registro
+         */
         function showRegister() {
             tabRegister.classList.add('active');
             tabLogin.classList.remove('active');
             formRegister.classList.add('form-active');
             formLogin.classList.remove('form-active');
+            hideError(registerErrorDiv);
+            hideSuccess(registerSuccessDiv);
+            regNombreInput.focus();
         }
 
-        tabLogin.addEventListener('click', showLogin);
-        tabRegister.addEventListener('click', showRegister);
-        goRegister.addEventListener('click', showRegister);
-        goLogin.addEventListener('click', showLogin);
+        /**
+         * Guardar usuario en localStorage
+         */
+        function saveUserSession(user) {
+            localStorage.setItem('factulogin_user', JSON.stringify(user));
+        }
+
+        /**
+         * Redirigir a menú principal
+         */
+        function redirectToMenu() {
+            window.location.href = REDIRECT_URL;
+        }
+
+        /**
+         * Desabilitar/habilitar botones de envío
+         */
+        function setFormLoading(form, isLoading) {
+            const submitButton = form.querySelector('button[type="submit"]');
+            submitButton.disabled = isLoading;
+            submitButton.textContent = isLoading ? 'Cargando...' : 
+                                      (form === formLogin ? 'Ingresar' : 'Registrarse');
+        }
+
+        // ========================================
+        // MANEJADORES DE EVENTOS - Cambio de tabs
+        // ========================================
+
+        tabLogin.addEventListener('click', (e) => {
+            e.preventDefault();
+            showLogin();
+        });
+
+        tabRegister.addEventListener('click', (e) => {
+            e.preventDefault();
+            showRegister();
+        });
+
+        goRegister.addEventListener('click', (e) => {
+            e.preventDefault();
+            showRegister();
+        });
+
+        goLogin.addEventListener('click', (e) => {
+            e.preventDefault();
+            showLogin();
+        });
+
+        // ========================================
+        // MANEJADOR: ENVÍO DE FORMULARIO LOGIN
+        // ========================================
 
         formLogin.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const correo = document.getElementById('login-correo').value.trim();
-            const password = document.getElementById('login-password').value;
+            hideError(loginErrorDiv);
 
-            const res = await fetch(`${API_URL}/api/auth/login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ correo, password })
-            });
-            const data = await res.json();
+            const correo = loginCorreoInput.value.trim();
+            const password = loginPasswordInput.value;
 
-            if (!res.ok || !data.ok) {
-                alert('Correo o contraseña incorrectos');
+            // Validación básica
+            if (!correo || !password) {
+                showError(loginErrorDiv, 'Por favor completa todos los campos.');
                 return;
             }
 
-            localStorage.setItem('factulogin_user', JSON.stringify(data.user));
-            window.location.href = 'menú.html';
+            if (!correo.includes('@')) {
+                showError(loginErrorDiv, 'Por favor ingresa un correo válido.');
+                return;
+            }
+
+            setFormLoading(formLogin, true);
+
+            try {
+                const response = await fetch(`${API_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ correo, password }),
+                });
+
+                const data = await response.json();
+
+                if (!response.ok || !data.ok) {
+                    // Login fallido
+                    const errorMessage = data.error || 'Correo o contraseña incorrectos';
+                    showError(loginErrorDiv, errorMessage);
+                    loginPasswordInput.value = ''; // Limpiar contraseña
+                    setFormLoading(formLogin, false);
+                    return;
+                }
+
+                // Login exitoso
+                if (data.user) {
+                    saveUserSession(data.user);
+                    // Redirigir después de un pequeño delay para mejor UX
+                    setTimeout(() => {
+                        redirectToMenu();
+                    }, 300);
+                } else {
+                    showError(loginErrorDiv, 'Respuesta inesperada del servidor');
+                    setFormLoading(formLogin, false);
+                }
+            } catch (error) {
+                console.error('Error en login:', error);
+                showError(loginErrorDiv, 'Error de conexión. Por favor intenta de nuevo.');
+                setFormLoading(formLogin, false);
+            }
         });
+
+        // ========================================
+        // MANEJADOR: ENVÍO DE FORMULARIO REGISTRO
+        // ========================================
 
         formRegister.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const nombre = document.getElementById('reg-nombre').value.trim();
-            const correo = document.getElementById('reg-correo').value.trim();
-            const password = document.getElementById('reg-password').value;
-            const confirmar = document.getElementById('reg-confirmar').value;
+            hideError(registerErrorDiv);
+            hideSuccess(registerSuccessDiv);
+
+            const nombre = regNombreInput.value.trim();
+            const correo = regCorreoInput.value.trim();
+            const password = regPasswordInput.value;
+            const confirmar = regConfirmarInput.value;
+
+            // Validaciones
+            if (!nombre || !correo || !password || !confirmar) {
+                showError(registerErrorDiv, 'Por favor completa todos los campos.');
+                return;
+            }
+
+            if (nombre.length < 3) {
+                showError(registerErrorDiv, 'El nombre debe tener al menos 3 caracteres.');
+                return;
+            }
+
+            if (!correo.includes('@')) {
+                showError(registerErrorDiv, 'Por favor ingresa un correo válido.');
+                return;
+            }
+
+            if (password.length < 6) {
+                showError(registerErrorDiv, 'La contraseña debe tener al menos 6 caracteres.');
+                return;
+            }
 
             if (password !== confirmar) {
-                alert('Las contraseñas no coinciden');
+                showError(registerErrorDiv, 'Las contraseñas no coinciden.');
                 return;
             }
 
-            const res = await fetch(`${API_URL}/api/auth/register`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nombre, correo, password })
-            });
-            const data = await res.json();
+            setFormLoading(formRegister, true);
 
-            if (!res.ok) {
-                alert(data.error || 'No se pudo registrar');
-                return;
+            try {
+                const response = await fetch(`${API_URL}/api/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ nombre, correo, password }),
+                });
+
+                const data = await response.json();
+
+                if (!response.ok || !data.ok) {
+                    // Registro fallido
+                    const errorMessage = data.error || 'No se pudo registrar la cuenta';
+                    showError(registerErrorDiv, errorMessage);
+                    setFormLoading(formRegister, false);
+                    return;
+                }
+
+                // Registro exitoso - mostrar mensaje de éxito
+                showSuccess(registerSuccessDiv, 'Cuenta creada correctamente. Iniciando sesión...');
+
+                // Guardar usuario en sesión
+                if (data.user) {
+                    saveUserSession(data.user);
+                    // Redirigir después de un pequeño delay para que vea el mensaje
+                    setTimeout(() => {
+                        redirectToMenu();
+                    }, 800);
+                } else {
+                    showError(registerErrorDiv, 'Respuesta inesperada del servidor');
+                    setFormLoading(formRegister, false);
+                }
+            } catch (error) {
+                console.error('Error en registro:', error);
+                showError(registerErrorDiv, 'Error de conexión. Por favor intenta de nuevo.');
+                setFormLoading(formRegister, false);
             }
-
-            alert('Registro exitoso, ahora inicia sesión');
-            showLogin();
-            formRegister.reset();
         });
+
+        // ========================================
+        // INICIALIZACIÓN: Focus en el primer input
+        // ========================================
+        loginCorreoInput.focus();
     </script>
 </body>
 </html>

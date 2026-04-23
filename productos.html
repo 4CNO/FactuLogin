@@ -2,44 +2,62 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Productos</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Productos — FactuLogin</title>
     <link rel="stylesheet" href="CSS/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
 </head>
-<body>
+<body class="has-sidebar">
 
-<a href="menú.html" class="back-menu-btn">← Menú</a>
+<nav class="sidebar">
+    <div class="sidebar-logo">FactuLogin</div>
+    <a href="menú.html"     class="sidebar-link"><i class="fa-solid fa-house"></i><span class="sidebar-label">Inicio</span></a>
+    <a href="clientes.html" class="sidebar-link"><i class="fa-solid fa-users"></i><span class="sidebar-label">Clientes</span></a>
+    <a href="empresas.html" class="sidebar-link"><i class="fa-solid fa-building"></i><span class="sidebar-label">Empresas</span></a>
+    <a href="productos.html" class="sidebar-link active"><i class="fa-solid fa-box"></i><span class="sidebar-label">Productos</span></a>
+    <a href="pedidos.html"  class="sidebar-link"><i class="fa-solid fa-receipt"></i><span class="sidebar-label">Pedidos</span></a>
+</nav>
 
-<div class="container">
+<div class="toast-container" id="toastContainer"></div>
+
+<div class="container page-transition">
     <div class="form">
-        <h2>Productos</h2>
+        <h2>📦 Productos</h2>
+
+        <div id="producto-error" class="error-msg" style="display:none;"></div>
+        <div id="producto-ok"    class="ok-msg"    style="display:none;"></div>
 
         <div class="input-group">
-            <label>Nombre Producto</label>
-            <input type="text" name="nombreProducto" id="nombreProducto">
+            <label>Nombre del producto</label>
+            <input type="text" id="nombreProducto" placeholder="Ej: Laptop Pro 15">
         </div>
 
         <div class="input-group">
-            <label>Precio</label>
-            <input type="number" name="precioProducto" id="precioProducto">
+            <label>Marca</label>
+            <input type="text" id="marcaProducto" placeholder="Ej: Dell, Apple, Samsung…">
         </div>
 
         <div class="input-group">
-            <label>Empresa</label>
-            <select name="empresaProducto" id="empresaProducto">
-                <option>Seleccionar</option>
-            </select>
+            <label>Precio unitario</label>
+            <input type="number" id="precioProducto" min="0" step="0.01" placeholder="Ej: 1500000">
         </div>
 
-        <button id="saveProductoBtn">Guardar</button>
+        <div class="input-group">
+            <label>Cantidad en bodega</label>
+            <input type="number" id="cantidadProducto" min="0" step="1" placeholder="Ej: 50">
+        </div>
+
+        <button id="saveProductoBtn">Guardar producto</button>
 
         <hr style="margin:20px 0;">
 
-        <table border="1" width="100%">
+        <table>
             <thead>
                 <tr>
                     <th>Producto</th>
+                    <th>Marca</th>
                     <th>Precio</th>
-                    <th>Empresa</th>
+                    <th>En bodega</th>
                 </tr>
             </thead>
             <tbody id="productosBody"></tbody>
@@ -49,61 +67,96 @@
 </div>
 
 <script>
-const API_URL = 'http://localhost:3000';
+const API_URL        = window.location.origin;
 const SESSION_ACTIVE = Boolean(JSON.parse(localStorage.getItem('factulogin_user') || 'null')?.id);
-const nombreInput = document.getElementById('nombreProducto');
-const precioInput = document.getElementById('precioProducto');
-const empresaSelect = document.getElementById('empresaProducto');
-const saveBtn = document.getElementById('saveProductoBtn');
-const body = document.getElementById('productosBody');
-const empty = document.getElementById('productosEmpty');
+
+const nombreInput   = document.getElementById('nombreProducto');
+const marcaInput    = document.getElementById('marcaProducto');
+const precioInput   = document.getElementById('precioProducto');
+const cantidadInput = document.getElementById('cantidadProducto');
+const saveBtn       = document.getElementById('saveProductoBtn');
+const tbody         = document.getElementById('productosBody');
+const empty         = document.getElementById('productosEmpty');
+const errorDiv      = document.getElementById('producto-error');
+const okDiv         = document.getElementById('producto-ok');
+
+function toast(msg) {
+    const tc = document.getElementById('toastContainer');
+    const d  = document.createElement('div');
+    d.className = 'toast'; d.textContent = msg; tc.appendChild(d);
+    setTimeout(() => { d.style.animation='toastOut 0.28s ease forwards'; setTimeout(()=>d.remove(),300); }, 3200);
+}
+
+function showMsg(type, msg) {
+    errorDiv.style.display = okDiv.style.display = 'none';
+    if (type === 'error') { errorDiv.textContent = msg; errorDiv.style.display = 'block'; }
+    if (type === 'ok')    { okDiv.textContent    = msg; okDiv.style.display    = 'block'; }
+}
 
 function renderProductos(rows) {
-    body.innerHTML = rows.map(r => `<tr><td>${r.name}</td><td>$${Number(r.price).toFixed(2)}</td><td>${r.company_name}</td></tr>`).join('');
+    tbody.innerHTML = rows.map(r => `
+        <tr>
+            <td>${r.name}</td>
+            <td>${r.brand || '—'}</td>
+            <td>$${Number(r.price).toFixed(2)}</td>
+            <td>${r.stock ?? 0}</td>
+        </tr>`).join('');
     empty.style.display = rows.length ? 'none' : 'block';
 }
 
-async function loadEmpresas() {
-    const res = await fetch(`${API_URL}/api/empresas`);
-    const rows = await res.json();
-    empresaSelect.innerHTML = '<option value="">Seleccionar</option>' + rows.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
-}
-
 async function loadProductos() {
-    const res = await fetch(`${API_URL}/api/productos`);
-    const rows = await res.json();
-    renderProductos(rows);
+    try {
+        const res  = await fetch(`${API_URL}/api/productos`);
+        const rows = await res.json();
+        renderProductos(rows);
+    } catch(err) {
+        showMsg('error', 'No se pudo cargar la lista de productos');
+        console.error(err);
+    }
 }
 
-saveBtn.addEventListener('click', async (e) => {
-    e.preventDefault();
-    const payload = {
-        nombre: nombreInput.value.trim(),
-        precio: Number(precioInput.value),
-        empresaId: Number(empresaSelect.value),
-    };
-    const res = await fetch(`${API_URL}/api/productos`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (!res.ok) return alert(data.error || 'No se pudo guardar producto');
-    nombreInput.value = '';
-    precioInput.value = '';
-    empresaSelect.value = '';
-    loadProductos();
+saveBtn.addEventListener('click', async () => {
+    showMsg(null);
+    const nombre   = nombreInput.value.trim();
+    const marca    = marcaInput.value.trim();
+    const precio   = Number(precioInput.value);
+    const cantidad = Number(cantidadInput.value);
+
+    if (!nombre)           { showMsg('error', 'El nombre es obligatorio'); return; }
+    if (!marca)            { showMsg('error', 'La marca es obligatoria');  return; }
+    if (isNaN(precio) || precio < 0) { showMsg('error', 'El precio debe ser un número válido'); return; }
+    if (isNaN(cantidad) || cantidad < 0) { showMsg('error', 'La cantidad debe ser un número válido'); return; }
+
+    saveBtn.disabled = true; saveBtn.textContent = 'Guardando…';
+
+    try {
+        const res  = await fetch(`${API_URL}/api/productos`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nombre, marca, precio, cantidad }),
+        });
+        const data = await res.json();
+        if (!res.ok) { showMsg('error', data.error || 'No se pudo guardar el producto'); return; }
+
+        showMsg('ok', 'Producto guardado correctamente');
+        toast('📦 Producto guardado');
+        nombreInput.value = marcaInput.value = precioInput.value = cantidadInput.value = '';
+        loadProductos();
+    } catch(err) {
+        showMsg('error', 'Error de conexión con el servidor');
+        console.error(err);
+    } finally {
+        saveBtn.disabled = false; saveBtn.textContent = 'Guardar producto';
+    }
 });
 
 if (!SESSION_ACTIVE) {
-    [nombreInput, precioInput, empresaSelect, saveBtn].forEach(el => el.disabled = true);
+    [nombreInput, marcaInput, precioInput, cantidadInput, saveBtn].forEach(el => el.disabled = true);
     empty.textContent = 'Inicia sesión para habilitar productos';
     empty.style.display = 'block';
 } else {
-    loadEmpresas();
     loadProductos();
 }
 </script>
-
 </body>
 </html>
