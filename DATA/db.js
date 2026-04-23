@@ -1,45 +1,46 @@
+require('dotenv').config();
 const mongoose = require('mongoose');
 
-// ─── Conexiones a los dos clusters ────────────────────────────────────────────
-const authDB  = mongoose.createConnection(process.env.MONGO_URI_AUTH,  { autoIndex: true });
-const storeDB = mongoose.createConnection(process.env.MONGO_URI_STORE, { autoIndex: true });
+// ─── Conexiones ────────────────────────────────────────────────────────────────
+const authDB  = mongoose.createConnection(process.env.MONGO_URI_AUTH);
+const storeDB = mongoose.createConnection(process.env.MONGO_URI_STORE);
 
-authDB.on('connected',  () => console.log('✅ Cluster AUTH  conectado  (usuarios/notif/facturas)'));
+authDB.on('connected',  () => console.log('✅ Cluster AUTH  conectado'));
 authDB.on('error',  err => console.error('❌ Cluster AUTH  error:', err.message));
 
-storeDB.on('connected', () => console.log('✅ Cluster STORE conectado (clientes/empresas/productos/pedidos)'));
+storeDB.on('connected', () => console.log('✅ Cluster STORE conectado'));
 storeDB.on('error', err => console.error('❌ Cluster STORE error:', err.message));
 
-// ─── Schemas ──────────────────────────────────────────────────────────────────
-
+// ─── Schemas AUTH ─────────────────────────────────────────────────────────────
 const userSchema = new mongoose.Schema({
     name:          { type: String, required: true },
     email:         { type: String, required: true, unique: true, lowercase: true, trim: true },
     password_hash: { type: String, required: true },
     profile_image: { type: String, default: null },
-    created_at:    { type: Date,   default: Date.now },
+    created_at:    { type: Date, default: Date.now },
 });
 
 const notificationSchema = new mongoose.Schema({
-    user_id:    { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    user_id:    { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     message:    { type: String, required: true },
     created_at: { type: Date, default: Date.now },
 });
 
 const invoiceSchema = new mongoose.Schema({
-    user_id:     { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    user_id:     { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     description: { type: String, required: true },
     total:       { type: Number, required: true },
     created_at:  { type: Date, default: Date.now },
 });
 
 const userEventSchema = new mongoose.Schema({
-    user_id:    { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+    user_id:    { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true, index: true },
     action:     { type: String, required: true },
     detail:     { type: String, default: null },
     created_at: { type: Date, default: Date.now },
 });
 
+// ─── Schemas STORE ────────────────────────────────────────────────────────────
 const clientSchema = new mongoose.Schema({
     name:       { type: String, required: true },
     document:   { type: String, required: true },
@@ -55,25 +56,25 @@ const companySchema = new mongoose.Schema({
     created_at: { type: Date, default: Date.now },
 });
 
-// ── Producto: marca + stock en bodega (empresa eliminada del frontend) ─
+// Producto: SIN company_id, CON brand + stock
 const productSchema = new mongoose.Schema({
     name:       { type: String, required: true },
-    brand:      { type: String, default: '' },       // marca
-    price:      { type: Number, required: true },
-    stock:      { type: Number, default: 0 },        // cantidad en bodega
+    brand:      { type: String, required: true, default: '' },
+    price:      { type: Number, required: true, min: 0 },
+    stock:      { type: Number, required: true, default: 0, min: 0 },
     created_at: { type: Date, default: Date.now },
 });
 
 const orderItemSchema = new mongoose.Schema({
-    product_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
-    quantity:   { type: Number, required: true },
-    price:      { type: Number, required: true },    // precio unitario con descuento
-    pct_desc:   { type: Number, default: 0 },        // % de descuento aplicado
-    subtotal:   { type: Number, required: true },
+    product_id:  { type: mongoose.Schema.Types.ObjectId, ref: 'Product', required: true },
+    quantity:    { type: Number, required: true },
+    price:       { type: Number, required: true },   // unitario con descuento
+    pct_desc:    { type: Number, default: 0 },
+    subtotal:    { type: Number, required: true },
 });
 
 const orderSchema = new mongoose.Schema({
-    user_id:    { type: mongoose.Schema.Types.ObjectId, default: null },
+    user_id:    { type: mongoose.Schema.Types.ObjectId, default: null, index: true },
     client_id:  { type: mongoose.Schema.Types.ObjectId, ref: 'Client', required: true },
     company_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Company', required: true },
     items:      [orderItemSchema],
@@ -94,8 +95,8 @@ const Order        = storeDB.model('Order',       orderSchema);
 
 // ─── USUARIOS ─────────────────────────────────────────────────────────────────
 async function createUser({ name, email, passwordHash }) {
-    const user = await User.create({ name, email, password_hash: passwordHash });
-    return { id: user._id, name: user.name, email: user.email };
+    const u = await User.create({ name, email, password_hash: passwordHash });
+    return { id: u._id, name: u.name, email: u.email };
 }
 
 async function getUserByEmail(email) {
@@ -113,30 +114,32 @@ async function getUserById(id) {
     return { id: u._id, name: u.name, email: u.email, profile_image: u.profile_image, created_at: u.created_at };
 }
 
-async function updateUserProfileImage(userId, profileImagePath) {
-    const res = await User.updateOne({ _id: userId }, { profile_image: profileImagePath });
-    return res.modifiedCount > 0;
+async function updateUserProfileImage(userId, path) {
+    const r = await User.updateOne({ _id: userId }, { profile_image: path });
+    return r.modifiedCount > 0;
 }
 
-// ─── NOTIFICACIONES ───────────────────────────────────────────────────────────
+// ─── NOTIFICACIONES (RLS: filtrado por user_id) ────────────────────────────────
 async function addNotification(userId, message) {
     const n = await Notification.create({ user_id: userId, message });
     return { id: n._id, userId, message };
 }
 
 async function getNotificationsByUser(userId) {
+    // RLS: solo se devuelven notificaciones del userId indicado
     const rows = await Notification.find({ user_id: userId })
         .sort({ created_at: -1 }).limit(20).lean();
     return rows.map(n => ({ id: n._id, message: n.message, created_at: n.created_at }));
 }
 
-// ─── FACTURAS ─────────────────────────────────────────────────────────────────
+// ─── FACTURAS (RLS) ───────────────────────────────────────────────────────────
 async function addInvoice(userId, description, total) {
     const inv = await Invoice.create({ user_id: userId, description, total });
     return { id: inv._id, userId, description, total };
 }
 
 async function getInvoicesByUser(userId) {
+    // RLS: solo facturas del userId indicado
     const rows = await Invoice.find({ user_id: userId }).sort({ created_at: -1 }).lean();
     return rows.map(i => ({ id: i._id, description: i.description, total: i.total, created_at: i.created_at }));
 }
@@ -177,13 +180,7 @@ async function createProduct({ name, brand, price, stock }) {
 
 async function getProducts() {
     const rows = await Product.find().sort({ created_at: -1 }).lean();
-    return rows.map(p => ({
-        id:    p._id,
-        name:  p.name,
-        brand: p.brand || '',
-        price: p.price,
-        stock: p.stock ?? 0,
-    }));
+    return rows.map(p => ({ id: p._id, name: p.name, brand: p.brand || '', price: p.price, stock: p.stock ?? 0 }));
 }
 
 async function getProductById(productId) {
@@ -208,8 +205,22 @@ async function getOrders() {
     const rows = await Order.find()
         .populate('client_id',  'name')
         .populate('company_id', 'name')
-        .sort({ created_at: -1 })
-        .lean();
+        .sort({ created_at: -1 }).lean();
+    return rows.map(o => ({
+        id:           o._id,
+        total:        o.total,
+        created_at:   o.created_at,
+        client_name:  o.client_id?.name  || '—',
+        company_name: o.company_id?.name || '—',
+    }));
+}
+
+// RLS: pedidos filtrados por usuario
+async function getOrdersByUser(userId) {
+    const rows = await Order.find({ user_id: userId })
+        .populate('client_id',  'name')
+        .populate('company_id', 'name')
+        .sort({ created_at: -1 }).lean();
     return rows.map(o => ({
         id:           o._id,
         total:        o.total,
@@ -227,5 +238,5 @@ module.exports = {
     createClient, getClients,
     createCompany, getCompanies,
     createProduct, getProducts, getProductById,
-    createOrder, getOrders,
+    createOrder, getOrders, getOrdersByUser,
 };
