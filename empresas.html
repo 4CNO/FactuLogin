@@ -2,48 +2,77 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Empresas</title>
-    <link rel="stylesheet" href="CSS/styles.css ">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Empresas — FactuLogin</title>
+    <link rel="stylesheet" href="CSS/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
 </head>
-<body>
+<body class="has-sidebar page-transition">
 
+<nav class="sidebar">
+    <span class="sidebar-logo">FactuLogin</span>
+    <a href="menú.html"      class="sidebar-link"><i class="fa-solid fa-house"></i><span class="sidebar-label">Inicio</span></a>
+    <a href="clientes.html"  class="sidebar-link"><i class="fa-solid fa-users"></i><span class="sidebar-label">Clientes</span></a>
+    <a href="empresas.html"  class="sidebar-link active"><i class="fa-solid fa-building"></i><span class="sidebar-label">Empresas</span></a>
+    <a href="productos.html" class="sidebar-link"><i class="fa-solid fa-box"></i><span class="sidebar-label">Productos</span></a>
+    <a href="pedidos.html"   class="sidebar-link"><i class="fa-solid fa-receipt"></i><span class="sidebar-label">Pedidos</span></a>
+</nav>
+
+<div class="toast-container" id="toastContainer"></div>
 <a href="menú.html" class="back-menu-btn">← Menú</a>
 
-<div class="container">
+<div class="container form-centered">
     <div class="form">
         <h2>Empresas</h2>
 
-        <div class="input-group">
-            <label>Nombre Empresa</label>
-            <input type="text" name="nombreEmpresa" id="nombreEmpresa">
+        <div class="search-bar">
+            <div class="search-input-wrap">
+                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                <input type="text" id="buscarNit" placeholder="Buscar por NIT…" autocomplete="off">
+                <button id="btnBuscar" class="search-btn">Buscar</button>
+            </div>
+            <span id="searchStatus" class="search-status"></span>
         </div>
 
-        <div class="input-group">
-            <label>NIT</label>
-            <input type="text" name="nitEmpresa" id="nitEmpresa">
+        <div id="modoIndicador" class="modo-badge modo-nuevo">
+            <i class="fa-solid fa-plus-circle"></i> Modo: Nueva empresa
         </div>
 
+        <div id="empresa-error" class="error-msg" style="display:none;"></div>
+        <div id="empresa-ok"    class="ok-msg"    style="display:none;"></div>
+
+        <div class="input-group">
+            <label>Nombre empresa</label>
+            <input type="text" id="nombreEmpresa" placeholder="Ej: Tech Solutions S.A.S">
+        </div>
+        <div class="input-group">
+            <label>NIT <span class="field-hint">(clave única)</span></label>
+            <input type="text" id="nitEmpresa" placeholder="Ej: 900123456-7">
+        </div>
         <div class="input-group">
             <label>Teléfono</label>
-            <input type="text" name="telefonoEmpresa" id="telefonoEmpresa">
+            <input type="text" id="telefonoEmpresa" placeholder="Ej: 6041234567">
         </div>
-
         <div class="input-group">
             <label>Dirección</label>
-            <input type="text" name="direccionEmpresa" id="direccionEmpresa">
+            <input type="text" id="direccionEmpresa" placeholder="Ej: Calle 10 #5-20, Medellín">
         </div>
 
-        <button id="saveEmpresaBtn">Guardar</button>
+        <div class="btn-row">
+            <button id="saveEmpresaBtn">
+                <i class="fa-solid fa-floppy-disk" style="margin-right:6px;"></i>
+                <span id="saveBtnText">Guardar empresa</span>
+            </button>
+            <button id="clearBtn" class="btn-secondary" title="Limpiar formulario">
+                <i class="fa-solid fa-rotate-left"></i>
+            </button>
+        </div>
 
         <hr style="margin:20px 0;">
 
-        <table border="1" width="100%">
+        <table>
             <thead>
-                <tr>
-                    <th>Empresa</th>
-                    <th>NIT</th>
-                    <th>Teléfono</th>
-                </tr>
+                <tr><th>#</th><th>Empresa</th><th>NIT</th><th>Teléfono</th></tr>
             </thead>
             <tbody id="empresasBody"></tbody>
         </table>
@@ -51,58 +80,7 @@
     </div>
 </div>
 
-<script>
-const API_URL = 'http://localhost:3000';
-const SESSION_ACTIVE = Boolean(JSON.parse(localStorage.getItem('factulogin_user') || 'null')?.id);
-const nombreInput = document.getElementById('nombreEmpresa');
-const nitInput = document.getElementById('nitEmpresa');
-const telefonoInput = document.getElementById('telefonoEmpresa');
-const direccionInput = document.getElementById('direccionEmpresa');
-const saveBtn = document.getElementById('saveEmpresaBtn');
-const body = document.getElementById('empresasBody');
-const empty = document.getElementById('empresasEmpty');
-
-function renderEmpresas(rows) {
-    body.innerHTML = rows.map(r => `<tr><td>${r.name}</td><td>${r.nit}</td><td>${r.phone}</td></tr>`).join('');
-    empty.style.display = rows.length ? 'none' : 'block';
-}
-
-async function loadEmpresas() {
-    const res = await fetch(`${API_URL}/api/empresas`);
-    const rows = await res.json();
-    renderEmpresas(rows);
-}
-
-saveBtn.addEventListener('click', async (e) => {
-    e.preventDefault();
-    const payload = {
-        nombre: nombreInput.value.trim(),
-        nit: nitInput.value.trim(),
-        telefono: telefonoInput.value.trim(),
-        direccion: direccionInput.value.trim(),
-    };
-    const res = await fetch(`${API_URL}/api/empresas`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (!res.ok) return alert(data.error || 'No se pudo guardar empresa');
-    nombreInput.value = '';
-    nitInput.value = '';
-    telefonoInput.value = '';
-    direccionInput.value = '';
-    loadEmpresas();
-});
-
-if (!SESSION_ACTIVE) {
-    [nombreInput, nitInput, telefonoInput, direccionInput, saveBtn].forEach(el => el.disabled = true);
-    empty.textContent = 'Inicia sesión para habilitar empresas';
-    empty.style.display = 'block';
-} else {
-    loadEmpresas();
-}
-</script>
-
+<script src="DATA/Scrips/utils.js"    defer></script>
+<script src="DATA/Scrips/empresas.js" defer></script>
 </body>
 </html>

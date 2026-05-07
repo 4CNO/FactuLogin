@@ -7,58 +7,77 @@
     <link rel="stylesheet" href="CSS/styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
 </head>
-<body class="has-sidebar">
+<body class="has-sidebar page-transition">
 
 <nav class="sidebar">
-    <div class="sidebar-logo">FactuLogin</div>
-    <a href="menú.html"     class="sidebar-link"><i class="fa-solid fa-house"></i><span class="sidebar-label">Inicio</span></a>
-    <a href="clientes.html" class="sidebar-link"><i class="fa-solid fa-users"></i><span class="sidebar-label">Clientes</span></a>
-    <a href="empresas.html" class="sidebar-link"><i class="fa-solid fa-building"></i><span class="sidebar-label">Empresas</span></a>
+    <span class="sidebar-logo">FactuLogin</span>
+    <a href="menú.html"      class="sidebar-link"><i class="fa-solid fa-house"></i><span class="sidebar-label">Inicio</span></a>
+    <a href="clientes.html"  class="sidebar-link"><i class="fa-solid fa-users"></i><span class="sidebar-label">Clientes</span></a>
+    <a href="empresas.html"  class="sidebar-link"><i class="fa-solid fa-building"></i><span class="sidebar-label">Empresas</span></a>
     <a href="productos.html" class="sidebar-link active"><i class="fa-solid fa-box"></i><span class="sidebar-label">Productos</span></a>
-    <a href="pedidos.html"  class="sidebar-link"><i class="fa-solid fa-receipt"></i><span class="sidebar-label">Pedidos</span></a>
+    <a href="pedidos.html"   class="sidebar-link"><i class="fa-solid fa-receipt"></i><span class="sidebar-label">Pedidos</span></a>
 </nav>
 
 <div class="toast-container" id="toastContainer"></div>
+<a href="menú.html" class="back-menu-btn">← Menú</a>
 
-<div class="container page-transition">
+<div class="container form-centered">
     <div class="form">
-        <h2>📦 Productos</h2>
+        <h2>Productos</h2>
+
+        <div class="search-bar">
+            <div class="search-input-wrap">
+                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                <input type="number" id="buscarId" placeholder="Buscar por ID de producto…" min="1" autocomplete="off">
+                <button id="btnBuscar" class="search-btn">Buscar</button>
+            </div>
+            <span id="searchStatus" class="search-status"></span>
+        </div>
+
+        <div id="modoIndicador" class="modo-badge modo-nuevo">
+            <i class="fa-solid fa-plus-circle"></i> Modo: Nuevo producto
+        </div>
 
         <div id="producto-error" class="error-msg" style="display:none;"></div>
         <div id="producto-ok"    class="ok-msg"    style="display:none;"></div>
 
+        <div class="input-group" id="idGroup" style="display:none;">
+            <label>ID de producto <span class="field-hint">(asignado automáticamente)</span></label>
+            <input type="number" id="productoId" readonly>
+        </div>
+
         <div class="input-group">
             <label>Nombre del producto</label>
-            <input type="text" id="nombreProducto" placeholder="Ej: Laptop Pro 15">
+            <input type="text" id="nombreProducto" placeholder="Ej: Camiseta básica">
         </div>
-
         <div class="input-group">
             <label>Marca</label>
-            <input type="text" id="marcaProducto" placeholder="Ej: Dell, Apple, Samsung…">
+            <input type="text" id="marcaProducto" placeholder="Ej: Nike">
         </div>
-
         <div class="input-group">
             <label>Precio unitario</label>
-            <input type="number" id="precioProducto" min="0" step="0.01" placeholder="Ej: 1500000">
+            <input type="number" id="precioProducto" min="0" step="0.01" placeholder="Ej: 59900">
         </div>
-
         <div class="input-group">
             <label>Cantidad en bodega</label>
-            <input type="number" id="cantidadProducto" min="0" step="1" placeholder="Ej: 50">
+            <input type="number" id="cantidadProducto" min="0" step="1" placeholder="Ej: 100">
         </div>
 
-        <button id="saveProductoBtn">Guardar producto</button>
+        <div class="btn-row">
+            <button id="saveProductoBtn">
+                <i class="fa-solid fa-floppy-disk" style="margin-right:6px;"></i>
+                <span id="saveBtnText">Guardar producto</span>
+            </button>
+            <button id="clearBtn" class="btn-secondary" title="Limpiar formulario">
+                <i class="fa-solid fa-rotate-left"></i>
+            </button>
+        </div>
 
         <hr style="margin:20px 0;">
 
         <table>
             <thead>
-                <tr>
-                    <th>Producto</th>
-                    <th>Marca</th>
-                    <th>Precio</th>
-                    <th>En bodega</th>
-                </tr>
+                <tr><th>ID</th><th>Producto</th><th>Marca</th><th>Precio</th><th>Bodega</th></tr>
             </thead>
             <tbody id="productosBody"></tbody>
         </table>
@@ -66,97 +85,7 @@
     </div>
 </div>
 
-<script>
-const API_URL        = window.location.origin;
-const SESSION_ACTIVE = Boolean(JSON.parse(localStorage.getItem('factulogin_user') || 'null')?.id);
-
-const nombreInput   = document.getElementById('nombreProducto');
-const marcaInput    = document.getElementById('marcaProducto');
-const precioInput   = document.getElementById('precioProducto');
-const cantidadInput = document.getElementById('cantidadProducto');
-const saveBtn       = document.getElementById('saveProductoBtn');
-const tbody         = document.getElementById('productosBody');
-const empty         = document.getElementById('productosEmpty');
-const errorDiv      = document.getElementById('producto-error');
-const okDiv         = document.getElementById('producto-ok');
-
-function toast(msg) {
-    const tc = document.getElementById('toastContainer');
-    const d  = document.createElement('div');
-    d.className = 'toast'; d.textContent = msg; tc.appendChild(d);
-    setTimeout(() => { d.style.animation='toastOut 0.28s ease forwards'; setTimeout(()=>d.remove(),300); }, 3200);
-}
-
-function showMsg(type, msg) {
-    errorDiv.style.display = okDiv.style.display = 'none';
-    if (type === 'error') { errorDiv.textContent = msg; errorDiv.style.display = 'block'; }
-    if (type === 'ok')    { okDiv.textContent    = msg; okDiv.style.display    = 'block'; }
-}
-
-function renderProductos(rows) {
-    tbody.innerHTML = rows.map(r => `
-        <tr>
-            <td>${r.name}</td>
-            <td>${r.brand || '—'}</td>
-            <td>$${Number(r.price).toFixed(2)}</td>
-            <td>${r.stock ?? 0}</td>
-        </tr>`).join('');
-    empty.style.display = rows.length ? 'none' : 'block';
-}
-
-async function loadProductos() {
-    try {
-        const res  = await fetch(`${API_URL}/api/productos`);
-        const rows = await res.json();
-        renderProductos(rows);
-    } catch(err) {
-        showMsg('error', 'No se pudo cargar la lista de productos');
-        console.error(err);
-    }
-}
-
-saveBtn.addEventListener('click', async () => {
-    showMsg(null);
-    const nombre   = nombreInput.value.trim();
-    const marca    = marcaInput.value.trim();
-    const precio   = Number(precioInput.value);
-    const cantidad = Number(cantidadInput.value);
-
-    if (!nombre)           { showMsg('error', 'El nombre es obligatorio'); return; }
-    if (!marca)            { showMsg('error', 'La marca es obligatoria');  return; }
-    if (isNaN(precio) || precio < 0) { showMsg('error', 'El precio debe ser un número válido'); return; }
-    if (isNaN(cantidad) || cantidad < 0) { showMsg('error', 'La cantidad debe ser un número válido'); return; }
-
-    saveBtn.disabled = true; saveBtn.textContent = 'Guardando…';
-
-    try {
-        const res  = await fetch(`${API_URL}/api/productos`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ nombre, marca, precio, cantidad }),
-        });
-        const data = await res.json();
-        if (!res.ok) { showMsg('error', data.error || 'No se pudo guardar el producto'); return; }
-
-        showMsg('ok', 'Producto guardado correctamente');
-        toast('📦 Producto guardado');
-        nombreInput.value = marcaInput.value = precioInput.value = cantidadInput.value = '';
-        loadProductos();
-    } catch(err) {
-        showMsg('error', 'Error de conexión con el servidor');
-        console.error(err);
-    } finally {
-        saveBtn.disabled = false; saveBtn.textContent = 'Guardar producto';
-    }
-});
-
-if (!SESSION_ACTIVE) {
-    [nombreInput, marcaInput, precioInput, cantidadInput, saveBtn].forEach(el => el.disabled = true);
-    empty.textContent = 'Inicia sesión para habilitar productos';
-    empty.style.display = 'block';
-} else {
-    loadProductos();
-}
-</script>
+<script src="DATA/Scrips/utils.js"     defer></script>
+<script src="DATA/Scrips/productos.js" defer></script>
 </body>
 </html>

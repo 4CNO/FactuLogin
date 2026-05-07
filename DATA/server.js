@@ -1,7 +1,7 @@
 require('dotenv').config();
 
-const fs   = require('fs');
-const path = require('path');
+const fs         = require('fs');
+const path       = require('path');
 const express    = require('express');
 const cors       = require('cors');
 const bcrypt     = require('bcryptjs');
@@ -33,13 +33,10 @@ const SMTP_FROM = process.env.SMTP_FROM || SMTP_USER;
 
 if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
 
-// ─── Multer ───────────────────────────────────────────────────────────────────
+// ── Multer ────────────────────────────────────────────────────────────────────
 const storage = multer.diskStorage({
     destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
-    filename:    (_req, file, cb) => {
-        const ext = path.extname(file.originalname) || '.png';
-        cb(null, `profile-${Date.now()}${ext}`);
-    },
+    filename:    (_req, file, cb) => cb(null, `profile-${Date.now()}${path.extname(file.originalname)||'.png'}`),
 });
 const upload = multer({
     storage,
@@ -50,7 +47,7 @@ const upload = multer({
     },
 });
 
-// ─── Mailer ───────────────────────────────────────────────────────────────────
+// ── Mailer ────────────────────────────────────────────────────────────────────
 const mailer = SMTP_HOST && SMTP_USER && SMTP_PASS
     ? nodemailer.createTransport({
           host: SMTP_HOST, port: SMTP_PORT,
@@ -65,16 +62,16 @@ const mailer = SMTP_HOST && SMTP_USER && SMTP_PASS
 const ALLOWED_ORIGINS = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
-    // Producción: descomenta y pon tu dominio real
+    // Producción — descomenta con tu dominio real:
     // 'https://MIDOMINIO.com',
 ];
 
 app.use(cors({
     origin: (origin, cb) => {
-        if (!origin) return cb(null, true);            // Postman / curl
-        if (origin === 'null') return cb(null, true);  // file://
+        if (!origin)           return cb(null, true);   // Postman / curl / mismo servidor
+        if (origin === 'null') return cb(null, true);   // file://
         if (ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
-        return cb(new Error(`CORS: origen bloqueado → ${origin}`));
+        return cb(new Error(`CORS bloqueado: ${origin}`));
     },
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-User-Id'],
@@ -94,29 +91,28 @@ app.use((_req, res, next) => {
         "connect-src 'self'",
     ].join('; '));
     res.setHeader('Strict-Transport-Security', 'max-age=63072000; includeSubDomains; preload');
-    res.setHeader('X-Frame-Options', 'DENY');
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+    res.setHeader('X-Frame-Options',       'DENY');
+    res.setHeader('X-Content-Type-Options','nosniff');
+    res.setHeader('Referrer-Policy',       'strict-origin-when-cross-origin');
+    res.setHeader('Permissions-Policy',    'camera=(), microphone=(), geolocation=()');
     next();
 });
 
 // ════════════════════════════════════════════════════════════════════════════
 // 4.1  RLS MIDDLEWARE
-// Verifica que el userId declarado en el header X-User-Id coincida
-// con el :id del recurso que se quiere acceder.
+// Cada usuario solo puede acceder a sus propios recursos.
+// El header X-User-Id es enviado por el frontend en rutas sensibles.
 // ════════════════════════════════════════════════════════════════════════════
 function requireSameUser(req, res, next) {
     const claimedId  = req.headers['x-user-id'];
     const resourceId = req.params.id;
     if (!claimedId || !resourceId) return next();
-    if (String(claimedId) !== String(resourceId)) {
+    if (String(claimedId) !== String(resourceId))
         return res.status(403).json({ error: 'Acceso denegado: no puedes acceder a datos de otro usuario.' });
-    }
     next();
 }
 
-// ─── Body parsers + estáticos ─────────────────────────────────────────────────
+// ── Body parsers + estáticos ──────────────────────────────────────────────────
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(PROJECT_ROOT));
@@ -131,7 +127,7 @@ app.get('/api/health', (_req, res) =>
     res.json({ ok: true, timestamp: new Date().toISOString() })
 );
 
-// ─── Registro ─────────────────────────────────────────────────────────────────
+// ── Registro ──────────────────────────────────────────────────────────────────
 app.post('/api/auth/register', async (req, res) => {
     try {
         const { nombre, correo, password } = req.body;
@@ -152,17 +148,14 @@ app.post('/api/auth/register', async (req, res) => {
         await addNotification(user.id, '¡Bienvenido a FactuLogin! Tu cuenta fue creada.');
         await addInvoice(user.id, 'Factura demo de bienvenida', 0);
 
-        res.status(201).json({
-            ok: true,
-            user: { id: user.id, name: user.name, email: user.email },
-        });
+        res.status(201).json({ ok: true, user: { id: user.id, name: user.name, email: user.email } });
     } catch (err) {
         console.error('[POST /api/auth/register]', err);
         res.status(500).json({ error: 'Error interno al registrar usuario.' });
     }
 });
 
-// ─── Login ────────────────────────────────────────────────────────────────────
+// ── Login ─────────────────────────────────────────────────────────────────────
 app.post('/api/auth/login', async (req, res) => {
     try {
         const { correo, password } = req.body;
@@ -180,18 +173,14 @@ app.post('/api/auth/login', async (req, res) => {
             return res.status(401).json({ ok: false, error: 'Correo o contraseña incorrectos.' });
 
         await addUserEvent(user._id, 'login', 'Inicio de sesión');
-
-        res.json({
-            ok: true,
-            user: { id: user._id, name: user.name, email: user.email, profileImage: user.profile_image || null },
-        });
+        res.json({ ok: true, user: { id: user._id, name: user.name, email: user.email, profileImage: user.profile_image || null } });
     } catch (err) {
         console.error('[POST /api/auth/login]', err);
         res.status(500).json({ ok: false, error: 'Error interno al iniciar sesión.' });
     }
 });
 
-// ─── Dashboard (RLS) ──────────────────────────────────────────────────────────
+// ── Dashboard (RLS: solo el propio usuario) ────────────────────────────────────
 app.get('/api/users/:id/dashboard', requireSameUser, async (req, res) => {
     try {
         const user = await getUserById(req.params.id);
@@ -201,20 +190,14 @@ app.get('/api/users/:id/dashboard', requireSameUser, async (req, res) => {
             getNotificationsByUser(req.params.id),
             getInvoicesByUser(req.params.id),
         ]);
-
-        res.json({
-            ok: true,
-            user: { id: user.id, name: user.name, email: user.email, profileImage: user.profile_image || null },
-            notifications,
-            invoices,
-        });
+        res.json({ ok: true, user: { ...user, profileImage: user.profile_image || null }, notifications, invoices });
     } catch (err) {
-        console.error('[GET /api/users/:id/dashboard]', err);
+        console.error('[GET /dashboard]', err);
         res.status(500).json({ error: 'Error al cargar dashboard.' });
     }
 });
 
-// ─── Eventos (RLS) ────────────────────────────────────────────────────────────
+// ── Eventos (RLS) ─────────────────────────────────────────────────────────────
 app.post('/api/users/:id/events', requireSameUser, async (req, res) => {
     try {
         const { action, detail } = req.body;
@@ -222,11 +205,12 @@ app.post('/api/users/:id/events', requireSameUser, async (req, res) => {
         await addUserEvent(req.params.id, action, detail || null);
         res.status(201).json({ ok: true });
     } catch (err) {
+        console.error('[POST /events]', err);
         res.status(500).json({ error: 'Error al guardar evento.' });
     }
 });
 
-// ─── Foto de perfil (RLS) ─────────────────────────────────────────────────────
+// ── Foto de perfil (RLS) ──────────────────────────────────────────────────────
 app.post('/api/users/:id/profile-photo', requireSameUser, upload.single('profileImage'), async (req, res) => {
     try {
         const user = await getUserById(req.params.id);
@@ -237,31 +221,27 @@ app.post('/api/users/:id/profile-photo', requireSameUser, upload.single('profile
             const old = path.join(UPLOADS_DIR, path.basename(user.profile_image));
             if (fs.existsSync(old)) fs.unlinkSync(old);
         }
-
         const relativePath = `/uploads/${req.file.filename}`;
         await updateUserProfileImage(req.params.id, relativePath);
         await addNotification(req.params.id, 'Se actualizó tu foto de perfil.');
-        await addUserEvent(req.params.id, 'profile_photo_changed', 'Cambió foto de perfil');
-
+        await addUserEvent(req.params.id, 'profile_photo_changed', 'Cambió foto');
         res.json({ ok: true, profileImage: relativePath });
     } catch (err) {
-        console.error('[POST profile-photo]', err);
+        console.error('[POST /profile-photo]', err);
         res.status(500).json({ error: 'Error al actualizar foto.' });
     }
 });
 
-// ─── Usuarios (lista) ─────────────────────────────────────────────────────────
 app.get('/api/users', async (_req, res) => {
     try { res.json(await getAllUsers()); }
     catch (err) { res.status(500).json({ error: 'Error al obtener usuarios.' }); }
 });
 
-// ─── Clientes ─────────────────────────────────────────────────────────────────
+// ── Clientes ──────────────────────────────────────────────────────────────────
 app.get('/api/clientes', async (_req, res) => {
     try { res.json(await getClients()); }
-    catch (err) { res.status(500).json({ error: 'Error al obtener clientes.' }); }
+    catch { res.status(500).json({ error: 'Error al obtener clientes.' }); }
 });
-
 app.post('/api/clientes', async (req, res) => {
     try {
         const { nombre, documento, telefono } = req.body;
@@ -270,17 +250,16 @@ app.post('/api/clientes', async (req, res) => {
         const row = await createClient({ name: nombre.trim(), document: documento.trim(), phone: telefono.trim() });
         res.status(201).json({ ok: true, client: row });
     } catch (err) {
-        console.error('[POST /api/clientes]', err);
+        console.error('[POST /clientes]', err);
         res.status(500).json({ error: 'Error al guardar cliente.' });
     }
 });
 
-// ─── Empresas ─────────────────────────────────────────────────────────────────
+// ── Empresas ──────────────────────────────────────────────────────────────────
 app.get('/api/empresas', async (_req, res) => {
     try { res.json(await getCompanies()); }
-    catch (err) { res.status(500).json({ error: 'Error al obtener empresas.' }); }
+    catch { res.status(500).json({ error: 'Error al obtener empresas.' }); }
 });
-
 app.post('/api/empresas', async (req, res) => {
     try {
         const { nombre, nit, telefono, direccion } = req.body;
@@ -289,54 +268,50 @@ app.post('/api/empresas', async (req, res) => {
         const row = await createCompany({ name: nombre.trim(), nit: nit.trim(), phone: telefono.trim(), address: direccion.trim() });
         res.status(201).json({ ok: true, company: row });
     } catch (err) {
-        console.error('[POST /api/empresas]', err);
+        console.error('[POST /empresas]', err);
         res.status(500).json({ error: 'Error al guardar empresa.' });
     }
 });
 
-// ─── Productos ────────────────────────────────────────────────────────────────
+// ── Productos (nombre + marca + precio + stock) ───────────────────────────────
 app.get('/api/productos', async (_req, res) => {
     try { res.json(await getProducts()); }
-    catch (err) { res.status(500).json({ error: 'Error al obtener productos.' }); }
+    catch { res.status(500).json({ error: 'Error al obtener productos.' }); }
 });
-
 app.post('/api/productos', async (req, res) => {
     try {
         const { nombre, marca, precio, cantidad } = req.body;
-        if (!nombre) return res.status(400).json({ error: 'El nombre es requerido.' });
-        if (!marca)  return res.status(400).json({ error: 'La marca es requerida.' });
-
+        if (!nombre)          return res.status(400).json({ error: 'El nombre es requerido.' });
+        if (!marca)           return res.status(400).json({ error: 'La marca es requerida.' });
         const precioNum   = Number(precio);
         const cantidadNum = Number(cantidad);
-        if (isNaN(precioNum)   || precioNum   < 0) return res.status(400).json({ error: 'Precio inválido.' });
-        if (isNaN(cantidadNum) || cantidadNum < 0) return res.status(400).json({ error: 'Cantidad inválida.' });
+        if (isNaN(precioNum)   || precioNum   < 0) return res.status(400).json({ error: 'Precio inválido (debe ser ≥ 0).' });
+        if (isNaN(cantidadNum) || cantidadNum < 0) return res.status(400).json({ error: 'Cantidad inválida (debe ser ≥ 0).' });
 
         const row = await createProduct({ name: nombre.trim(), brand: marca.trim(), price: precioNum, stock: cantidadNum });
         res.status(201).json({ ok: true, product: row });
     } catch (err) {
-        console.error('[POST /api/productos]', err);
+        console.error('[POST /productos]', err);
         res.status(500).json({ error: 'Error al guardar producto.' });
     }
 });
 
-// ─── Pedidos / opciones ───────────────────────────────────────────────────────
+// ── Pedidos / opciones ────────────────────────────────────────────────────────
 app.get('/api/pedidos/options', async (_req, res) => {
     try {
         const [clientes, empresas, productos] = await Promise.all([getClients(), getCompanies(), getProducts()]);
         res.json({ clientes, empresas, productos });
-    } catch (err) { res.status(500).json({ error: 'Error al cargar opciones.' }); }
+    } catch { res.status(500).json({ error: 'Error al cargar opciones.' }); }
 });
-
 app.get('/api/pedidos', async (_req, res) => {
     try { res.json(await getOrders()); }
-    catch (err) { res.status(500).json({ error: 'Error al listar pedidos.' }); }
+    catch { res.status(500).json({ error: 'Error al listar pedidos.' }); }
 });
 
-// ─── POST /api/pedidos — descuento 2.5% por cada 10 uds (recalculado en servidor)
+// ── POST /api/pedidos — descuento 2.5% por cada 10 uds ────────────────────────
 app.post('/api/pedidos', async (req, res) => {
     try {
         const { userId, clienteId, empresaId, items } = req.body;
-
         if (!clienteId || !empresaId || !Array.isArray(items) || !items.length)
             return res.status(400).json({ error: 'Faltan datos para generar el pedido.' });
 
@@ -353,14 +328,14 @@ app.post('/api/pedidos', async (req, res) => {
             if (!product) return res.status(404).json({ error: `Producto ${productId} no encontrado.` });
 
             // Descuento: 2.5% por cada bloque de 10 unidades
-            const bloques   = Math.floor(quantity / 10);
-            const pctDesc   = bloques * 0.025;
-            const precioU   = Number(product.price);
-            const precioDesc = precioU * (1 - pctDesc);
-            const subtotal  = precioDesc * quantity;
+            const bloques      = Math.floor(quantity / 10);
+            const pctDesc      = bloques * 0.025;
+            const precioBase   = Number(product.price);
+            const precioFinal  = precioBase * (1 - pctDesc);
+            const subtotal     = precioFinal * quantity;
             total += subtotal;
 
-            invoiceLines.push({ productId, productName: product.name, quantity, price: precioDesc, pctDesc, subtotal });
+            invoiceLines.push({ productId, productName: product.name, quantity, price: precioFinal, pctDesc, subtotal });
         }
 
         const order = await createOrder({
@@ -402,20 +377,19 @@ app.post('/api/pedidos', async (req, res) => {
 
         res.status(201).json({ ok: true, orderId: order.id, total, invoiceLines, mailSent });
     } catch (err) {
-        console.error('[POST /api/pedidos]', err);
+        console.error('[POST /pedidos]', err);
         res.status(500).json({ error: 'Error al crear pedido.' });
     }
 });
 
-// ─── Error global ─────────────────────────────────────────────────────────────
+// ── Error global ──────────────────────────────────────────────────────────────
 app.use((err, _req, res, _next) => {
     console.error('[Error global]', err);
     res.status(500).json({ error: err.message || 'Error interno.' });
 });
-
 app.use('/api/*', (_req, res) => res.status(404).json({ error: 'Endpoint no encontrado.' }));
 
-// ─── Arrancar ─────────────────────────────────────────────────────────────────
+// ── Arrancar ──────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
     console.log(`\n✅  FactuLogin en http://localhost:${PORT}`);
     console.log(`📄  Login:  http://localhost:${PORT}/Login.html`);

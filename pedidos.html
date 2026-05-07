@@ -7,22 +7,23 @@
     <link rel="stylesheet" href="CSS/styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
 </head>
-<body class="has-sidebar">
+<body class="has-sidebar page-transition">
 
 <nav class="sidebar">
-    <div class="sidebar-logo">FactuLogin</div>
-    <a href="menú.html"     class="sidebar-link"><i class="fa-solid fa-house"></i><span class="sidebar-label">Inicio</span></a>
-    <a href="clientes.html" class="sidebar-link"><i class="fa-solid fa-users"></i><span class="sidebar-label">Clientes</span></a>
-    <a href="empresas.html" class="sidebar-link"><i class="fa-solid fa-building"></i><span class="sidebar-label">Empresas</span></a>
+    <span class="sidebar-logo">FactuLogin</span>
+    <a href="menú.html"      class="sidebar-link"><i class="fa-solid fa-house"></i><span class="sidebar-label">Inicio</span></a>
+    <a href="clientes.html"  class="sidebar-link"><i class="fa-solid fa-users"></i><span class="sidebar-label">Clientes</span></a>
+    <a href="empresas.html"  class="sidebar-link"><i class="fa-solid fa-building"></i><span class="sidebar-label">Empresas</span></a>
     <a href="productos.html" class="sidebar-link"><i class="fa-solid fa-box"></i><span class="sidebar-label">Productos</span></a>
-    <a href="pedidos.html"  class="sidebar-link active"><i class="fa-solid fa-receipt"></i><span class="sidebar-label">Pedidos</span></a>
+    <a href="pedidos.html"   class="sidebar-link active"><i class="fa-solid fa-receipt"></i><span class="sidebar-label">Pedidos</span></a>
 </nav>
 
 <div class="toast-container" id="toastContainer"></div>
+<a href="menú.html" class="back-menu-btn">← Menú</a>
 
-<div class="container page-transition">
+<div class="container form-centered">
     <div class="form">
-        <h2>🧾 Pedidos</h2>
+        <h2>Pedidos</h2>
 
         <div id="pedido-error" class="error-msg" style="display:none;"></div>
         <div id="pedido-ok"    class="ok-msg"    style="display:none;"></div>
@@ -31,26 +32,31 @@
             <label>Cliente</label>
             <select id="clientePedido"><option value="">Seleccionar cliente</option></select>
         </div>
-
         <div class="input-group">
             <label>Empresa</label>
             <select id="empresaPedido"><option value="">Seleccionar empresa</option></select>
         </div>
 
         <hr style="margin:16px 0 8px;">
-        <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:8px;">
+        <p style="font-size:.85rem;color:var(--text-muted);margin-bottom:8px;">
             Agregar producto al pedido
-            <span style="font-size:0.74rem;opacity:0.7;">— 2.5% de descuento por cada 10 unidades</span>
+            <span style="font-size:.78rem;opacity:.7;">· 2.5% desc. por cada 10 unidades</span>
         </p>
 
         <div class="input-group">
             <label>Producto</label>
             <select id="productoPedido"><option value="">Seleccionar producto</option></select>
         </div>
-
         <div class="input-group">
             <label>Cantidad</label>
-            <input type="number" id="cantidadProducto" min="1" placeholder="Ej: 2">
+            <input type="number" id="cantidadProducto" min="1" placeholder="Ej: 12">
+        </div>
+
+        <div class="descuento-row">
+            <span id="descuentoBadge" class="descuento-badge" style="display:none;">
+                <i class="fa-solid fa-tag"></i>
+                <span id="descuentoTexto"></span>
+            </span>
         </div>
 
         <button id="agregarBtn">+ Agregar al pedido</button>
@@ -60,238 +66,20 @@
         <table>
             <thead>
                 <tr>
-                    <th>Producto</th>
-                    <th>Cant.</th>
-                    <th>P. unitario</th>
-                    <th>Desc.</th>
-                    <th>Subtotal</th>
-                    <th></th>
+                    <th>Producto</th><th>Cant.</th><th>Precio unit.</th>
+                    <th>Desc.</th><th>Subtotal</th><th></th>
                 </tr>
             </thead>
             <tbody id="detalleBody"></tbody>
         </table>
         <p id="detalleEmpty" class="link">Aún no hay productos en el pedido</p>
 
-        <!-- Fila de descuento total (aparece solo si aplica) -->
-        <div class="descuento-row" id="descuentoRow" style="display:none;">
-            <span class="descuento-badge" id="descuentoBadge">🏷️ Descuento aplicado</span>
-        </div>
-
-        <div style="text-align:right;margin-top:12px;">
-            <div id="subtotalOriginalLabel" style="font-size:0.85rem;color:var(--text-muted);text-decoration:line-through;display:none;"></div>
-            <h3 id="totalLabel">Total: $0.00</h3>
-        </div>
-
-        <button id="generarBtn" style="margin-top:12px;">Generar pedido 🧾</button>
+        <h3 id="totalLabel" style="margin-top:15px;text-align:right;">Total: $0.00</h3>
+        <button id="generarBtn" style="margin-top:10px;">Generar pedido 🧾</button>
     </div>
 </div>
 
-<script>
-const API_URL     = window.location.origin;
-const currentUser = JSON.parse(localStorage.getItem('factulogin_user') || 'null');
-const SESSION_ACTIVE = Boolean(currentUser?.id);
-
-const clienteSelect  = document.getElementById('clientePedido');
-const empresaSelect  = document.getElementById('empresaPedido');
-const productoSelect = document.getElementById('productoPedido');
-const cantidadInput  = document.getElementById('cantidadProducto');
-const agregarBtn     = document.getElementById('agregarBtn');
-const generarBtn     = document.getElementById('generarBtn');
-const detalleBody    = document.getElementById('detalleBody');
-const detalleEmpty   = document.getElementById('detalleEmpty');
-const totalLabel     = document.getElementById('totalLabel');
-const subtotalOrig   = document.getElementById('subtotalOriginalLabel');
-const descuentoRow   = document.getElementById('descuentoRow');
-const descuentoBadge = document.getElementById('descuentoBadge');
-const errorDiv       = document.getElementById('pedido-error');
-const okDiv          = document.getElementById('pedido-ok');
-
-let productosCache = [];
-let items = [];
-
-// ── Toast ──────────────────────────────────────────────────────────────
-function toast(msg) {
-    const tc = document.getElementById('toastContainer');
-    const d  = document.createElement('div');
-    d.className='toast'; d.textContent=msg; tc.appendChild(d);
-    setTimeout(()=>{ d.style.animation='toastOut 0.28s ease forwards'; setTimeout(()=>d.remove(),300); },3200);
-}
-
-function showMsg(type, msg) {
-    errorDiv.style.display = okDiv.style.display = 'none';
-    if (type==='error') { errorDiv.textContent=msg; errorDiv.style.display='block'; }
-    if (type==='ok')    { okDiv.textContent=msg;    okDiv.style.display='block'; }
-}
-
-// ── Lógica de descuento ────────────────────────────────────────────────
-// 2.5% de descuento por cada bloque completo de 10 unidades del mismo item.
-// Si se piden 23 → 2 bloques → 5% de descuento sobre ese item.
-function calcularDescuento(precio, cantidad) {
-    const bloques     = Math.floor(cantidad / 10);  // bloques completos de 10
-    const pctDesc     = bloques * 0.025;             // 2.5% por bloque
-    const precioDesc  = precio * (1 - pctDesc);      // precio con descuento
-    const subtotal    = precioDesc * cantidad;
-    const ahorro      = (precio * cantidad) - subtotal;
-    return { subtotal, ahorro, pctDesc, bloques };
-}
-
-// ── Render tabla ──────────────────────────────────────────────────────
-function renderDetalle() {
-    let totalOriginal = 0;
-    let totalConDesc  = 0;
-    let hayDescuento  = false;
-
-    detalleBody.innerHTML = items.map((item, i) => {
-        const bruto = item.precio * item.cantidad;
-        totalOriginal += bruto;
-        totalConDesc  += item.subtotal;
-        const ahorro = bruto - item.subtotal;
-        if (ahorro > 0.001) hayDescuento = true;
-
-        const descCell = ahorro > 0.001
-            ? `<span class="descuento-badge">-${(item.pctDesc*100).toFixed(1)}%</span>`
-            : '<span style="color:var(--text-muted);font-size:0.8rem;">—</span>';
-
-        return `<tr>
-            <td>${item.nombre}</td>
-            <td>${item.cantidad}</td>
-            <td>$${item.precio.toFixed(2)}</td>
-            <td>${descCell}</td>
-            <td>$${item.subtotal.toFixed(2)}</td>
-            <td>
-                <button onclick="quitarItem(${i})"
-                    style="width:auto;padding:2px 8px;font-size:0.75rem;background:#ef4444;box-shadow:none;">✕</button>
-            </td>
-        </tr>`;
-    }).join('');
-
-    detalleEmpty.style.display = items.length ? 'none' : 'block';
-
-    // ── Mostrar descuento total de forma sutil ─────────────────────────
-    if (hayDescuento) {
-        const ahorroTotal = totalOriginal - totalConDesc;
-        subtotalOrig.textContent = `$${totalOriginal.toFixed(2)}`;
-        subtotalOrig.style.display = 'block';
-        descuentoRow.style.display = 'flex';
-        descuentoBadge.textContent = `🏷️ Ahorro total: $${ahorroTotal.toFixed(2)}`;
-    } else {
-        subtotalOrig.style.display = descuentoRow.style.display = 'none';
-    }
-
-    totalLabel.textContent = `Total: $${totalConDesc.toFixed(2)}`;
-}
-
-function quitarItem(index) {
-    items.splice(index, 1);
-    renderDetalle();
-}
-
-// ── Cargar opciones del servidor ──────────────────────────────────────
-async function loadOptions() {
-    try {
-        const res  = await fetch(`${API_URL}/api/pedidos/options`);
-        const data = await res.json();
-        productosCache = data.productos;
-
-        clienteSelect.innerHTML = '<option value="">Seleccionar cliente</option>' +
-            data.clientes.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-
-        empresaSelect.innerHTML = '<option value="">Seleccionar empresa</option>' +
-            data.empresas.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
-
-        productoSelect.innerHTML = '<option value="">Seleccionar producto</option>' +
-            data.productos.map(p =>
-                `<option value="${p.id}">${p.name}${p.brand?' ('+p.brand+')':''} — $${Number(p.price).toFixed(2)}</option>`
-            ).join('');
-    } catch(err) {
-        showMsg('error', 'No se pudieron cargar las opciones del pedido');
-        console.error(err);
-    }
-}
-
-// ── Agregar item ──────────────────────────────────────────────────────
-agregarBtn.addEventListener('click', () => {
-    showMsg(null);
-    const productoId = productoSelect.value;
-    const cantidad   = Number(cantidadInput.value);
-
-    if (!productoId)              { showMsg('error', 'Selecciona un producto'); return; }
-    if (!cantidad || cantidad<=0) { showMsg('error', 'Ingresa una cantidad válida'); return; }
-
-    const producto = productosCache.find(p => String(p.id) === String(productoId));
-    if (!producto) { showMsg('error', 'Producto no encontrado'); return; }
-
-    const precio = Number(producto.price);
-    const { subtotal, ahorro, pctDesc } = calcularDescuento(precio, cantidad);
-
-    items.push({ productoId, nombre: producto.name, cantidad, precio, subtotal, pctDesc });
-    cantidadInput.value = productoSelect.value = '';
-    renderDetalle();
-
-    if (ahorro > 0.001) {
-        showMsg('ok', `"${producto.name}" agregado con ${(pctDesc*100).toFixed(1)}% de descuento`);
-        toast(`🏷️ Descuento de ${(pctDesc*100).toFixed(1)}% aplicado a "${producto.name}"`);
-    } else {
-        showMsg('ok', `"${producto.name}" agregado al pedido`);
-    }
-});
-
-// ── Generar pedido ────────────────────────────────────────────────────
-generarBtn.addEventListener('click', async () => {
-    showMsg(null);
-    const clienteId = clienteSelect.value;
-    const empresaId = empresaSelect.value;
-
-    if (!clienteId)    { showMsg('error', 'Selecciona un cliente'); return; }
-    if (!empresaId)    { showMsg('error', 'Selecciona una empresa'); return; }
-    if (!items.length) { showMsg('error', 'Debes agregar al menos un producto'); return; }
-
-    generarBtn.disabled = true; generarBtn.textContent = 'Generando…';
-
-    try {
-        const payload = {
-            userId:    currentUser?.id || null,
-            clienteId,
-            empresaId,
-            items: items.map(i => ({
-                productoId: i.productoId,
-                cantidad:   i.cantidad,
-                pctDesc:    i.pctDesc,       // enviamos el descuento calculado
-            })),
-        };
-
-        const res  = await fetch(`${API_URL}/api/pedidos`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-        });
-        const data = await res.json();
-        if (!res.ok) { showMsg('error', data.error || 'No se pudo generar el pedido'); return; }
-
-        const msgCorreo = data.mailSent ? ' · Factura enviada al correo.' : '';
-        showMsg('ok', `✅ Pedido #${data.orderId} generado. Total: $${Number(data.total).toFixed(2)}${msgCorreo}`);
-        toast(`✅ Pedido #${data.orderId} generado por $${Number(data.total).toFixed(2)}`);
-
-        items = [];
-        renderDetalle();
-        clienteSelect.value = empresaSelect.value = productoSelect.value = '';
-    } catch(err) {
-        showMsg('error', 'Error de conexión con el servidor');
-        console.error(err);
-    } finally {
-        generarBtn.disabled = false; generarBtn.textContent = 'Generar pedido 🧾';
-    }
-});
-
-renderDetalle();
-
-if (!SESSION_ACTIVE) {
-    [clienteSelect,empresaSelect,productoSelect,cantidadInput,agregarBtn,generarBtn].forEach(el=>el.disabled=true);
-    detalleEmpty.textContent   = 'Inicia sesión para habilitar pedidos';
-    detalleEmpty.style.display = 'block';
-} else {
-    loadOptions();
-}
-</script>
+<script src="DATA/Scrips/utils.js"   defer></script>
+<script src="DATA/Scrips/pedidos.js" defer></script>
 </body>
 </html>

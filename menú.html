@@ -6,288 +6,86 @@
     <title>Menú — FactuLogin</title>
     <link rel="stylesheet" href="CSS/styles.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
-    <!-- Security headers via meta (complementan los del servidor) -->
-    <meta http-equiv="X-Content-Type-Options" content="nosniff">
-    <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
 </head>
-<body class="has-sidebar">
+<body class="has-sidebar page-transition">
 
-    <!-- ── Sidebar ──────────────────────────────────────────────────── -->
-    <nav class="sidebar" id="sidebar">
-        <div class="sidebar-logo">FactuLogin</div>
-        <a href="menú.html"     class="sidebar-link active">
-            <i class="fa-solid fa-house"></i>
-            <span class="sidebar-label">Inicio</span>
-        </a>
-        <a href="clientes.html" class="sidebar-link">
-            <i class="fa-solid fa-users"></i>
-            <span class="sidebar-label">Clientes</span>
-        </a>
-        <a href="empresas.html" class="sidebar-link">
-            <i class="fa-solid fa-building"></i>
-            <span class="sidebar-label">Empresas</span>
-        </a>
-        <a href="productos.html" class="sidebar-link">
-            <i class="fa-solid fa-box"></i>
-            <span class="sidebar-label">Productos</span>
-        </a>
-        <a href="pedidos.html"  class="sidebar-link">
-            <i class="fa-solid fa-receipt"></i>
-            <span class="sidebar-label">Pedidos</span>
-        </a>
-    </nav>
+<!-- Sidebar -->
+<nav class="sidebar">
+    <span class="sidebar-logo">FactuLogin</span>
+    <a href="menú.html"      class="sidebar-link active"><i class="fa-solid fa-house"></i><span class="sidebar-label">Inicio</span></a>
+    <a href="clientes.html"  class="sidebar-link"><i class="fa-solid fa-users"></i><span class="sidebar-label">Clientes</span></a>
+    <a href="empresas.html"  class="sidebar-link"><i class="fa-solid fa-building"></i><span class="sidebar-label">Empresas</span></a>
+    <a href="productos.html" class="sidebar-link"><i class="fa-solid fa-box"></i><span class="sidebar-label">Productos</span></a>
+    <a href="pedidos.html"   class="sidebar-link"><i class="fa-solid fa-receipt"></i><span class="sidebar-label">Pedidos</span></a>
+</nav>
 
-    <!-- ── Modal foto de perfil ─────────────────────────────────────── -->
-    <div class="profile-modal-overlay" id="profileModal" onclick="closeProfileModal()">
-        <img id="profileModalImg" class="profile-modal-img" alt="Foto de perfil" src="">
-    </div>
+<!-- Modal foto -->
+<div class="profile-modal-overlay" id="profileModal">
+    <img id="profileModalImg" class="profile-modal-img" src="" alt="Foto ampliada">
+</div>
 
-    <!-- ── Toast container ──────────────────────────────────────────── -->
-    <div class="toast-container" id="toastContainer"></div>
+<!-- Toasts -->
+<div class="toast-container" id="toastContainer"></div>
 
-    <div class="container page-transition">
-        <div class="topbar">
-            <h2>Panel principal</h2>
-            <div class="topbar-actions">
-
-                <!-- Notificaciones -->
-                <button id="notifBtn" class="icon-btn" title="Notificaciones">
-                    <i class="fa-regular fa-bell"></i>
-                    <span id="notifCount" class="notif-count">0</span>
+<div class="container">
+    <div class="topbar">
+        <h2>Panel principal</h2>
+        <div class="topbar-actions">
+            <button id="notifBtn" class="icon-btn" title="Notificaciones">
+                <i class="fa-regular fa-bell"></i>
+                <span id="notifCount" class="notif-count">0</span>
+            </button>
+            <div class="user-box">
+                <button id="userBtn" class="user-btn">
+                    <img id="profilePreview" class="profile-mini" alt="Perfil"
+                         src="https://ui-avatars.com/api/?name=U&background=e0e7ff&color=4f46e5&size=80">
+                    <span id="userNameLabel">Mi cuenta</span>
+                    <i class="fa-solid fa-chevron-down"></i>
                 </button>
-
-                <!-- Perfil -->
-                <div class="user-box">
-                    <button id="userBtn" class="user-btn">
-                        <img id="profilePreview" class="profile-mini" alt="Perfil"
-                             src="https://ui-avatars.com/api/?name=U&background=e0e7ff&color=4f46e5&size=40"
-                             title="Click para ampliar">
-                        <span id="userNameLabel">Mi cuenta</span>
-                        <i class="fa-solid fa-chevron-down"></i>
+                <div id="userDropdown" class="dropdown hidden">
+                    <p><strong id="dropdownUserName">Usuario</strong></p>
+                    <p id="dropdownUserEmail" class="muted-text">—</p>
+                    <hr>
+                    <label for="profileInput" class="menu-action" style="cursor:pointer;">
+                        <i class="fa-regular fa-image" style="margin-right:6px;"></i>Cambiar foto
+                    </label>
+                    <input type="file" id="profileInput" accept="image/*">
+                    <button id="viewInvoicesBtn" class="menu-action">
+                        <i class="fa-regular fa-file-lines" style="margin-right:6px;"></i>Mis facturas
                     </button>
-                    <div id="userDropdown" class="dropdown hidden">
-                        <p><strong id="dropdownUserName">Usuario</strong></p>
-                        <p id="dropdownUserEmail" class="muted-text">correo@demo.com</p>
-                        <hr>
-                        <label for="profileInput" class="menu-action" style="cursor:pointer;">
-                            <i class="fa-regular fa-image" style="margin-right:6px;"></i>Cambiar foto de perfil
-                        </label>
-                        <input type="file" id="profileInput" accept="image/*">
-                        <button id="viewInvoicesBtn" class="menu-action">
-                            <i class="fa-regular fa-file-lines" style="margin-right:6px;"></i>Consultar mis facturas
-                        </button>
-                        <button id="logoutBtn" class="menu-action danger">
-                            <i class="fa-solid fa-right-from-bracket" style="margin-right:6px;"></i>Desloguearme
-                        </button>
-                    </div>
+                    <button id="logoutBtn" class="menu-action danger">
+                        <i class="fa-solid fa-right-from-bracket" style="margin-right:6px;"></i>Cerrar sesión
+                    </button>
                 </div>
             </div>
         </div>
-
-        <!-- Paneles -->
-        <div id="notifPanel" class="panel hidden">
-            <h3>Notificaciones</h3>
-            <ul id="notifList"></ul>
-        </div>
-
-        <div id="invoicePanel" class="panel hidden">
-            <h3>Mis facturas</h3>
-            <ul id="invoiceList"></ul>
-        </div>
-
-        <div class="form">
-            <h2>Bienvenido</h2>
-            <p style="margin-bottom:20px;color:var(--text-muted)">Selecciona una opción</p>
-            <div class="menu">
-                <a href="clientes.html"  class="menu-btn">👥 Clientes</a>
-                <a href="empresas.html"  class="menu-btn">🏢 Empresas</a>
-                <a href="productos.html" class="menu-btn">📦 Productos</a>
-                <a href="pedidos.html"   class="menu-btn">🧾 Pedidos</a>
-            </div>
-        </div>
     </div>
 
-<script>
-const API_URL     = window.location.origin;
-const currentUser = JSON.parse(localStorage.getItem('factulogin_user') || 'null');
-const userId      = currentUser?.id || null;
-const SESSION_ACTIVE = Boolean(userId);
+    <div id="notifPanel" class="panel hidden">
+        <h3>Notificaciones</h3>
+        <ul id="notifList"></ul>
+    </div>
+    <div id="invoicePanel" class="panel hidden">
+        <h3>Mis facturas</h3>
+        <ul id="invoiceList"></ul>
+    </div>
 
-// ── Referencias ───────────────────────────────────────────────────────
-const notifBtn       = document.getElementById('notifBtn');
-const notifPanel     = document.getElementById('notifPanel');
-const notifList      = document.getElementById('notifList');
-const notifCount     = document.getElementById('notifCount');
-const userBtn        = document.getElementById('userBtn');
-const userDropdown   = document.getElementById('userDropdown');
-const logoutBtn      = document.getElementById('logoutBtn');
-const viewInvoicesBtn= document.getElementById('viewInvoicesBtn');
-const invoicePanel   = document.getElementById('invoicePanel');
-const invoiceList    = document.getElementById('invoiceList');
-const profileInput   = document.getElementById('profileInput');
-const profilePreview = document.getElementById('profilePreview');
-const userNameLabel  = document.getElementById('userNameLabel');
-const dropdownName   = document.getElementById('dropdownUserName');
-const dropdownEmail  = document.getElementById('dropdownUserEmail');
-const profileModal   = document.getElementById('profileModal');
-const profileModalImg= document.getElementById('profileModalImg');
+    <!-- Hero -->
+    <div class="form hero-card">
+        <div class="hero-logo-ring">
+            <i class="fa-solid fa-file-invoice-dollar hero-icon"></i>
+        </div>
+        <h1 class="hero-title">FactuLogin</h1>
+        <p class="hero-subtitle">Sistema de facturación moderno</p>
+        <div class="hero-divider"></div>
+        <p class="hero-hint">
+            <i class="fa-solid fa-bars" style="margin-right:6px;opacity:0.5;"></i>
+            Usa la barra lateral para navegar entre módulos
+        </p>
+    </div>
+</div>
 
-// ── Toast ─────────────────────────────────────────────────────────────
-function toast(msg, duration = 3500) {
-    const tc  = document.getElementById('toastContainer');
-    const div = document.createElement('div');
-    div.className   = 'toast';
-    div.textContent = msg;
-    tc.appendChild(div);
-    setTimeout(() => {
-        div.style.animation = 'toastOut 0.28s ease forwards';
-        setTimeout(() => div.remove(), 300);
-    }, duration);
-}
-
-// ── Modal perfil ──────────────────────────────────────────────────────
-function openProfileModal() {
-    profileModalImg.src = profilePreview.src;
-    profileModal.classList.add('open');
-}
-
-function closeProfileModal() {
-    profileModal.classList.remove('open');
-}
-
-// click en foto abre modal
-profilePreview.addEventListener('click', (e) => {
-    e.stopPropagation();
-    userDropdown.classList.add('hidden');
-    openProfileModal();
-});
-
-// ── Helpers ───────────────────────────────────────────────────────────
-function avatarUrl(name) {
-    return `https://ui-avatars.com/api/?name=${encodeURIComponent(name||'U')}&background=e0e7ff&color=4f46e5&size=80`;
-}
-
-function userPhoto(p, name) { return p ? API_URL + p : avatarUrl(name); }
-
-// ── Dashboard ─────────────────────────────────────────────────────────
-async function loadDashboard() {
-    if (!userId) {
-        userNameLabel.textContent = 'Invitado';
-        dropdownName.textContent  = 'Invitado';
-        dropdownEmail.textContent = 'Sin sesión activa';
-        notifCount.textContent    = '0';
-        notifList.innerHTML       = '<li>Inicia sesión para ver notificaciones</li>';
-        invoiceList.innerHTML     = '<li>Aún no hay recibos</li>';
-        notifBtn.disabled = viewInvoicesBtn.disabled = profileInput.disabled = true;
-        return;
-    }
-    try {
-        const res  = await fetch(`${API_URL}/api/users/${userId}/dashboard`);
-        const data = await res.json();
-        userNameLabel.textContent = data.user.name;
-        dropdownName.textContent  = data.user.name;
-        dropdownEmail.textContent = data.user.email;
-        const photo = userPhoto(data.user.profileImage, data.user.name);
-        profilePreview.src    = photo;
-        profileModalImg.src   = photo;
-
-        notifCount.textContent = data.notifications.length;
-        notifList.innerHTML = data.notifications.length
-            ? data.notifications.map(n => `<li>${n.message}</li>`).join('')
-            : '<li>Sin notificaciones</li>';
-
-        invoiceList.innerHTML = data.invoices.length
-            ? data.invoices.map(f => `<li>#${f.id} — ${f.description} — $${Number(f.total).toFixed(2)}</li>`).join('')
-            : '<li>Aún no hay recibos</li>';
-
-    } catch (err) { console.error('Error cargando dashboard:', err); }
-}
-
-// ── Eventos de tracking ───────────────────────────────────────────────
-async function track(action, detail) {
-    if (!userId) return;
-    try {
-        await fetch(`${API_URL}/api/users/${userId}/events`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action, detail }),
-        });
-    } catch(_) {}
-}
-
-// ── Listeners ─────────────────────────────────────────────────────────
-document.addEventListener('click', (e) => {
-    if (!userBtn.contains(e.target) && !userDropdown.contains(e.target))
-        userDropdown.classList.add('hidden');
-});
-
-notifBtn.addEventListener('click', () => {
-    notifPanel.classList.toggle('hidden');
-    invoicePanel.classList.add('hidden');
-    userDropdown.classList.add('hidden');
-    if (SESSION_ACTIVE) track('open_notifications', 'Abrió notificaciones');
-});
-
-userBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    userDropdown.classList.toggle('hidden');
-});
-
-viewInvoicesBtn.addEventListener('click', () => {
-    invoicePanel.classList.toggle('hidden');
-    notifPanel.classList.add('hidden');
-    userDropdown.classList.add('hidden');
-    if (SESSION_ACTIVE) track('view_invoices', 'Revisó facturas');
-});
-
-logoutBtn.addEventListener('click', async () => {
-    if (!userId) { toast('No hay sesión activa'); return; }
-    await track('logout', 'Cerró sesión');
-    localStorage.removeItem('factulogin_user');
-
-    // Transición de salida suave
-    document.querySelector('.container').style.animation = 'none';
-    document.querySelector('.container').style.opacity   = '0';
-    document.querySelector('.container').style.transform = 'translateY(-10px)';
-    document.querySelector('.container').style.transition= 'all 0.3s ease';
-    setTimeout(() => window.location.href = 'Login.html', 300);
-});
-
-profileInput.addEventListener('change', async () => {
-    if (!userId) { toast('Debes iniciar sesión para cambiar la foto'); profileInput.value=''; return; }
-    const file = profileInput.files[0];
-    if (!file) return;
-
-    const formData = new FormData();
-    formData.append('profileImage', file);
-
-    try {
-        const res  = await fetch(`${API_URL}/api/users/${userId}/profile-photo`, { method:'POST', body:formData });
-        const data = await res.json();
-        if (!res.ok) { toast(data.error || 'No se pudo subir la imagen'); return; }
-        const photo = userPhoto(data.profileImage, currentUser?.name);
-        profilePreview.src  = photo;
-        profileModalImg.src = photo;
-        track('profile_photo_changed', 'Actualizó foto');
-        toast('✅ Foto de perfil actualizada');
-    } catch(err) { console.error(err); toast('Error al subir la imagen'); }
-});
-
-// Transición de entrada a otras páginas
-document.querySelectorAll('.menu-btn, .sidebar-link').forEach(link => {
-    link.addEventListener('click', (e) => {
-        const href = link.getAttribute('href');
-        if (!href || href === '#') return;
-        e.preventDefault();
-        document.querySelector('.container').style.opacity   = '0';
-        document.querySelector('.container').style.transform = 'translateY(10px)';
-        document.querySelector('.container').style.transition= 'all 0.28s ease';
-        setTimeout(() => window.location.href = href, 280);
-    });
-});
-
-loadDashboard();
-if (SESSION_ACTIVE) track('open_menu', 'Entró al menú');
-</script>
+<script src="DATA/Scrips/utils.js"  defer></script>
+<script src="DATA/Scrips/menu.js"   defer></script>
 </body>
 </html>

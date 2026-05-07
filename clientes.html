@@ -2,45 +2,73 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Clientes</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clientes — FactuLogin</title>
     <link rel="stylesheet" href="CSS/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
 </head>
-<body>
+<body class="has-sidebar page-transition">
 
+<nav class="sidebar">
+    <span class="sidebar-logo">FactuLogin</span>
+    <a href="menú.html"      class="sidebar-link"><i class="fa-solid fa-house"></i><span class="sidebar-label">Inicio</span></a>
+    <a href="clientes.html"  class="sidebar-link active"><i class="fa-solid fa-users"></i><span class="sidebar-label">Clientes</span></a>
+    <a href="empresas.html"  class="sidebar-link"><i class="fa-solid fa-building"></i><span class="sidebar-label">Empresas</span></a>
+    <a href="productos.html" class="sidebar-link"><i class="fa-solid fa-box"></i><span class="sidebar-label">Productos</span></a>
+    <a href="pedidos.html"   class="sidebar-link"><i class="fa-solid fa-receipt"></i><span class="sidebar-label">Pedidos</span></a>
+</nav>
+
+<div class="toast-container" id="toastContainer"></div>
 <a href="menú.html" class="back-menu-btn">← Menú</a>
 
-<div class="container">
+<div class="container form-centered">
     <div class="form">
         <h2>Clientes</h2>
 
-        <!-- FORM -->
-        <div class="input-group">
-            <label>Nombre</label>
-            <input type="text" name="nombreCliente" id="nombreCliente">
+        <div class="search-bar">
+            <div class="search-input-wrap">
+                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                <input type="text" id="buscarDoc" placeholder="Buscar por N° de documento…" autocomplete="off">
+                <button id="btnBuscar" class="search-btn">Buscar</button>
+            </div>
+            <span id="searchStatus" class="search-status"></span>
         </div>
 
-        <div class="input-group">
-            <label>Documento</label>
-            <input type="text" name="documentoCliente" id="documentoCliente">
+        <div id="modoIndicador" class="modo-badge modo-nuevo">
+            <i class="fa-solid fa-plus-circle"></i> Modo: Nuevo cliente
         </div>
 
+        <div id="cliente-error" class="error-msg" style="display:none;"></div>
+        <div id="cliente-ok"    class="ok-msg"    style="display:none;"></div>
+
+        <div class="input-group">
+            <label>Nombre completo</label>
+            <input type="text" id="nombreCliente" placeholder="Ej: Juan Pérez">
+        </div>
+        <div class="input-group">
+            <label>Documento <span class="field-hint">(clave única)</span></label>
+            <input type="text" id="documentoCliente" placeholder="Ej: 1023456789">
+        </div>
         <div class="input-group">
             <label>Teléfono</label>
-            <input type="text" name="telefonoCliente" id="telefonoCliente">
+            <input type="text" id="telefonoCliente" placeholder="Ej: 3001234567">
         </div>
 
-        <button id="saveClienteBtn">Guardar</button>
+        <div class="btn-row">
+            <button id="saveClienteBtn">
+                <i class="fa-solid fa-floppy-disk" style="margin-right:6px;"></i>
+                <span id="saveBtnText">Guardar cliente</span>
+            </button>
+            <button id="clearBtn" class="btn-secondary" title="Limpiar formulario">
+                <i class="fa-solid fa-rotate-left"></i>
+            </button>
+        </div>
 
         <hr style="margin:20px 0;">
 
-        <!-- TABLA -->
-        <table border="1" width="100%">
+        <table>
             <thead>
-                <tr>
-                    <th>Nombre</th>
-                    <th>Documento</th>
-                    <th>Teléfono</th>
-                </tr>
+                <tr><th>#</th><th>Nombre</th><th>Documento</th><th>Teléfono</th></tr>
             </thead>
             <tbody id="clientesBody"></tbody>
         </table>
@@ -48,55 +76,7 @@
     </div>
 </div>
 
-<script>
-const API_URL = 'http://localhost:3000';
-const SESSION_ACTIVE = Boolean(JSON.parse(localStorage.getItem('factulogin_user') || 'null')?.id);
-const nombreInput = document.getElementById('nombreCliente');
-const documentoInput = document.getElementById('documentoCliente');
-const telefonoInput = document.getElementById('telefonoCliente');
-const saveBtn = document.getElementById('saveClienteBtn');
-const body = document.getElementById('clientesBody');
-const empty = document.getElementById('clientesEmpty');
-
-function renderClientes(rows) {
-    body.innerHTML = rows.map(r => `<tr><td>${r.name}</td><td>${r.document}</td><td>${r.phone}</td></tr>`).join('');
-    empty.style.display = rows.length ? 'none' : 'block';
-}
-
-async function loadClientes() {
-    const res = await fetch(`${API_URL}/api/clientes`);
-    const rows = await res.json();
-    renderClientes(rows);
-}
-
-saveBtn.addEventListener('click', async (e) => {
-    e.preventDefault();
-    const payload = {
-        nombre: nombreInput.value.trim(),
-        documento: documentoInput.value.trim(),
-        telefono: telefonoInput.value.trim(),
-    };
-    const res = await fetch(`${API_URL}/api/clientes`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (!res.ok) return alert(data.error || 'No se pudo guardar cliente');
-    nombreInput.value = '';
-    documentoInput.value = '';
-    telefonoInput.value = '';
-    loadClientes();
-});
-
-if (!SESSION_ACTIVE) {
-    [nombreInput, documentoInput, telefonoInput, saveBtn].forEach(el => el.disabled = true);
-    empty.textContent = 'Inicia sesión para habilitar clientes';
-    empty.style.display = 'block';
-} else {
-    loadClientes();
-}
-</script>
-
+<script src="DATA/Scrips/utils.js"    defer></script>
+<script src="DATA/Scrips/clientes.js" defer></script>
 </body>
 </html>
